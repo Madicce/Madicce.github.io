@@ -1,0 +1,41 @@
+/* Appliquer un style global de réinitialisation pour un design propre */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Style de la page */
+body {
+    font-family: Arial, sans-serif; /* Police simple et moderne */
+    background-color: #f4f4f4;     /* Couleur de fond douce */
+    height: 100vh;                  /* Hauteur de la fenêtre du navigateur */
+    display: flex;
+    justify-content: center;        /* Centrer horizontalement le contenu */
+    align-items: center;            /* Centrer verticalement le contenu */
+    padding: 20px;
+}
+
+/* Style pour le conteneur du texte */
+.conteneur {
+    width: 80%;                     /* Largeur du conteneur (ajuste selon ton besoin) */
+    max-width: 800px;               /* Limite la largeur maximale */
+    background-color: #ffffff;      /* Fond blanc pour le texte */
+    padding: 20px;                  /* Espacement intérieur */
+    border-radius: 8px;             /* Coins arrondis */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Ombre légère */
+}
+
+/* Justification et centrage du texte */
+.conteneur p {
+    text-align: justify;            /* Justifier le texte */
+    line-height: 1.6;               /* Hauteur de ligne pour plus de lisibilité */
+    text-justify: inter-word;       /* Justification propre entre les mots */
+    margin-bottom: 20px;            /* Marge sous le paragraphe */
+}
+
+/* Optionnel : ajouter un espacement après le dernier paragraphe */
+.conteneur p:last-child {
+    margin-bottom: 0;
+}
+
