@@ -12,6 +12,15 @@
     <h1>Root-Me: ELF x86 — Basic</h1>
     <p class="meta">Category: Binary Exploitation • Difficulty: Easy • Date: 2025-10-23</p>
     <link rel="stylesheet" href="../../style.css">
+    <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
   </header>
 
   <article>
@@ -26,7 +35,7 @@ ch2.bin: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), statically li
 </code></pre>
 
     <p>Notes from the output:</p>
-    <ul>
+    <ul class="liste-normale">
       <li>ELF 32-bit LSB for Intel 80386.</li>
       <li>The binary is <strong>statically linked</strong> (all libraries embedded).</li>
       <li>It contains <strong>debug_info</strong> and is <strong>not stripped</strong>, so symbol and debug information are available — making analysis easier.</li>
@@ -70,12 +79,12 @@ Bad username
 </code></pre>
 
     <p>Observations:</p>
-    <ul>
+    <ul class="liste-normale">
       <li>There are two strings (shown as <code>&lt;censored&gt;</code> here) that appear near the username/password prompt — they likely correspond to the expected username and password.</li>
       <li>The success string uses a printf-style placeholder: <code>... avec le mot de passe : %s !</code>, which indicates the program prints the password when validating.</li>
     </ul>
     <h2>5. Conclusion / Notes</h2>
-    <ul>
+    <ul class="liste-normale">
       <li>Because the binary contains debug info and is not stripped, analysis is straightforward. <code>strings</code> is sufficient to find the expected credentials in this case.</li>
       <li>Optional follow-ups: use <code>objdump</code>, <code>readelf</code> or a disassembler (e.g. Ghidra/Radare2/IDA) to inspect control flow or confirm how credentials are compared.</li>
       <li>For reproducibility in a private repo: include the binary (if permissible), a small test script demonstrating the check, and a short note listing the tools used (<code>file</code>, <code>strings</code>, <code>objdump</code>, etc.).</li>
