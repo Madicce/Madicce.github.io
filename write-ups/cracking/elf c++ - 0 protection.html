@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ELF C++ - 0 protection</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="conteneur">
+      <h1>ELF C++ - 0 protection</h1>
+
+      <p>Let's analyze the binary again using the <code>file</code> command.</p>
+
+      <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme/craking$ file ch25.bin
+ch25.bin: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux.so.2, for GNU/Linux 2.6.24, BuildID[sha1]=38a418f97a019e3a6108932d4a7196637e368a88, not stripped
+      </code></pre>
+
+      <p>The file <code>ch25.bin</code> is a 32-bit ELF executable for an Intel 80386 architecture. 
+      It is dynamically linked, meaning it relies on shared libraries present on the target system. 
+      The file contains debugging information (it is not "stripped"). 
+      Further analysis shows that no obfuscation methods are used here either.</p>
+
+      <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme$ ./ch25.bin
+usage : ./ch25.bin password
+      </code></pre>
+
+      <p>The validation principle is the same as in the previous challenge. 
+      We need to provide the password to retrieve the flag. 
+      As indicated, the code is in C++, so strings are managed via the <code>std::string</code> class. 
+      During binary analysis, we find an interesting assembly code snippet:</p>
+
+      <pre><code class="language-bash">0x08048b86 &lt;+256&gt;:   mov    eax,DWORD PTR [eax]
+0x08048b88 &lt;+258&gt;:   mov    DWORD PTR [esp+0x4],eax
+0x08048b8c &lt;+262&gt;:   lea    eax,[ebp-0x14]
+0x08048b8f &lt;+265&gt;:   mov    DWORD PTR [esp],eax
+0x08048b92 &lt;+268&gt;:   call   0x8048cf7 &lt;_ZSteqIcSt11char_traitsIcESaIcEEbRKSbIT_T0_T1_EPKS3_&gt;
+0x08048b97 &lt;+273&gt;:   test   al,al
+0x08048b99 &lt;+275&gt;:   je     0x8048be5 &lt;main+351&gt;
+      </code></pre>
+
+      <p>Here, two arguments are passed to the function at address <code>0x8048cf7</code>, which is the 
+      <code>_ZSteqIcSt11char_traitsIcESaIcEEbRKSbIT_T0_T1_EPKS3_</code> function (C++ name mangled). 
+      This function handles string comparisons (the <code>eq</code> suffix indicates equality).</p>
+
+      <p>A breakpoint is set at address <code>0x08048b92</code> in the main function. 
+      Since all arguments are provided, we only need to inspect the stack (the first two stack elements are the arguments of interest):</p>
+
+      <pre><code class="language-bash">[----------------------------------registers-----------------------------------]
+EAX: 0xffffd114 --> 0x8050ccc ("&lt;censored&gt;")
+EBX: 0xffffd140 --> 0x2
+ECX: 0x3
+EDX: 0x804c010 --> 0x30000
+ESI: 0xffffd1f4 --> 0xffffd341 ("/home/yoyo/M1/S2/SL/rootme/craking/ch25.bin")
+EDI: 0xf7ffcb80 --> 0x0
+EBP: 0xffffd128 --> 0xf7ffd020 --> 0xf7ffda40 --> 0x0
+ESP: 0xffffd100 --> 0xffffd114 --> 0x8050ccc ("&lt;censored&gt;")
+EIP: 0x8048b92 (&lt;main+268&gt;: call 0x8048cf7 &lt;_ZSteqIcSt11char_traitsIcESaIcEEbRKSbIT_T0_T1_EPKS3_&gt;)
+EFLAGS: 0x282 (carry parity adjust zero SIGN trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+    0x8048b88 &lt;main+258&gt;:        mov    DWORD PTR [esp+0x4],eax
+    0x8048b8c &lt;main+262&gt;:        lea    eax,[ebp-0x14]
+    0x8048b8f &lt;main+265&gt;:        mov    DWORD PTR [esp],eax
+=&gt; 0x8048b92 &lt;main+268&gt;:        call   0x8048cf7 &lt;_ZSteqIcSt11char_traitsIcESaIcEEbRKSbIT_T0_T1_EPKS3_&gt;
+    0x8048b97 &lt;main+273&gt;:        test   al,al
+    0x8048b99 &lt;main+275&gt;:        je     0x8048be5 &lt;main+351&gt;
+    0x8048b9b &lt;main+277&gt;:        mov    DWORD PTR [esp+0x4],0x8048dfc
+    0x8048ba3 &lt;main+285&gt;:        mov    DWORD PTR [esp],0x804b100
+Guessed arguments:
+arg[0]: 0xffffd114 --> 0x8050ccc ("&lt;censored&gt;")
+arg[1]: 0xffffd36d ("password")
+[------------------------------------stack-------------------------------------]
+0000| 0xffffd100 --> 0xffffd114 --> 0x8050ccc ("&lt;censored&gt;")
+0004| 0xffffd104 --> 0xffffd36d ("password")
+0008| 0xffffd108 --> 0xffffd11c --> 0x8050bbc --> 0xca15d618
+0012| 0xffffd10c --> 0xf7fbea40 --> 0xf7b21000 --> 0x464c457f
+0016| 0xffffd110 --> 0xffffd150 --> 0xf7d47000 --> 0x225dac
+0020| 0xffffd114 --> 0x8050ccc ("&lt;censored&gt;")
+0024| 0xffffd118 --> 0x8050bdc --> 0xaf67b350
+0028| 0xffffd11c --> 0x8050bbc --> 0xca15d618
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value    
+      </code></pre>
+
+      <p>Using <strong>gdb peda</strong>, we can see the two arguments passed to the string comparison function. 
+      Here, the two arguments are respectively the validation flag and the password we provided as input.</p>
+
+      <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme$ ./ch25.bin &lt;censored&gt;
+Well done, you can validate using this password...
+Congratz. You can validate with this password...
+      </code></pre>
+    </div>
+  </body>
+</html>

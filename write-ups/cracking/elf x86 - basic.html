@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Root-Me: ELF x86 - Basic</title>
+  <meta name="description" content="Write-up: Reverse-engineering an ELF x86 32-bit dynamically linked binary with no protections — analysis, strings, and result.">
+  <meta name="author" content="You">
+  <meta name="date" content="2025-10-23" />
+</head>
+<header>
+    <h1>Root-Me: ELF x86 — Basic</h1>
+    <p class="meta">Category: Binary Exploitation • Difficulty: Easy • Date: 2025-10-23</p>
+    <link rel="stylesheet" href="style.css">
+  </header>
+
+  <article>
+    <div class="container">
+<p><strong>Goal:</strong> Analyze the provided ELF binary to find the username/password required to validate the challenge.</p>
+
+    <h2>1. Identify the file type</h2>
+    <p>Check the file type using the <code>file</code> command:</p>
+
+    <pre><code class="language-bash">yoyo@LAPTOP:~/RootMe/cracking$ file ch2.bin
+ch2.bin: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), statically linked, for GNU/Linux 2.6.8, with debug_info, not stripped
+</code></pre>
+
+    <p>Notes from the output:</p>
+    <ul>
+      <li>ELF 32-bit LSB for Intel 80386.</li>
+      <li>The binary is <strong>statically linked</strong> (all libraries embedded).</li>
+      <li>It contains <strong>debug_info</strong> and is <strong>not stripped</strong>, so symbol and debug information are available — making analysis easier.</li>
+      <li>No obfuscation techniques are apparently applied.</li>
+    </ul>
+
+    <h2>2. Run the program</h2>
+    <p>Execute the binary to observe runtime behavior:</p>
+
+    <pre><code class="language-bash">dboujnane@krick:~/espaces/travail/M1/S2/sl/rootme/cracking$ ./ch2.bin
+############################################################
+##        Bienvennue dans ce challenge de cracking        ##
+############################################################
+
+username: hello
+Bad username
+</code></pre>
+
+    <p>The program prompts for a <em>username</em> (and intuitively also a <em>password</em>).</p>
+
+    <h2>3. Inspect embedded strings</h2>
+    <p>Use <code>strings</code> to look for useful text stored in the binary:</p>
+
+    <pre><code class="language-bash">yoyo@LAPTOP:~/RootMe/cracking$ strings ch2.bin
+...
+%s : "%s"
+Allocating memory
+Reallocating memory
+&lt;censored&gt;
+&lt;censored&gt;
+############################################################
+##        Bienvennue dans ce challenge de cracking        ##
+############################################################
+username:
+password:
+&lt;censored&gt;
+Bien joue, vous pouvez valider l'epreuve avec le mot de passe : %s !
+Bad password
+Bad username
+...
+</code></pre>
+
+    <p>Observations:</p>
+    <ul>
+      <li>There are two strings (shown as <code>&lt;censored&gt;</code> here) that appear near the username/password prompt — they likely correspond to the expected username and password.</li>
+      <li>The success string uses a printf-style placeholder: <code>... avec le mot de passe : %s !</code>, which indicates the program prints the password when validating.</li>
+    </ul>
+    <h2>5. Conclusion / Notes</h2>
+    <ul>
+      <li>Because the binary contains debug info and is not stripped, analysis is straightforward. <code>strings</code> is sufficient to find the expected credentials in this case.</li>
+      <li>Optional follow-ups: use <code>objdump</code>, <code>readelf</code> or a disassembler (e.g. Ghidra/Radare2/IDA) to inspect control flow or confirm how credentials are compared.</li>
+      <li>For reproducibility in a private repo: include the binary (if permissible), a small test script demonstrating the check, and a short note listing the tools used (<code>file</code>, <code>strings</code>, <code>objdump</code>, etc.).</li>
+    </ul>
+    </div>
+</article>
+</body>
+</html>

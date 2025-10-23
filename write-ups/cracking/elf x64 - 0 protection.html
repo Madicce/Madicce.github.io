@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Root-Me: ELF x86 - No Protection</title>
+  <meta name="description" content="Write-up: Reverse-engineering an ELF x86 32-bit dynamically linked binary with no protections — analysis, strings, and result.">
+  <meta name="author" content="You">
+  <meta name="date" content="2025-10-23" />
+  
+</head>
+<body>
+  <header>
+    <h1>Root-Me: ELF x86 — No Protection</h1>
+    <p class="meta">Category: Binary Exploitation • Difficulty: Easy • Date: 2025-10-23</p>
+    <link rel="stylesheet" href="style.css">
+  </header>
+
+  <article>
+    <p><strong>Goal:</strong> Reverse engineer the provided ELF binary to find the password (flag) required to validate the challenge.</p>
+
+    <h2>1. Identify the file type</h2>
+    <p>Start by checking the file type with <code>file</code>:</p>
+
+    <pre><code class="language-bash">yoyo@LAPTOP-9SQVR51F:~/RootMe/cracking$ file ch1.bin
+ch1.bin: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux.so.2, for GNU/Linux 2.6.9, not stripped
+</code></pre>
+
+    <p>Notes from the output:</p>
+    <ul>
+      <li>ELF 32-bit LSB for Intel 80386.</li>
+      <li>Binary is <strong>dynamically linked</strong> and the interpreter is <code>/lib/ld-linux.so.2</code>.</li>
+      <li>The binary is <strong>not stripped</strong>, so symbol and debug information are available.</li>
+      <li>Given the challenge title and these properties, no obfuscation or protection appears to be in place.</li>
+    </ul>
+
+    <h2>2. Run the program</h2>
+    <p>Execute the binary to observe runtime behavior:</p>
+
+    <pre><code class="language-bash">dboujnane@krick:~/espaces/travail/M1/S2/sl/rootme/cracking$ ./ch1.bin 
+############################################################
+##        Bienvennue dans ce challenge de cracking        ##
+############################################################
+
+Veuillez entrer le mot de passe : hello
+Dommage, essaye encore une fois.
+</code></pre>
+
+    <p>The program prompts for a password and prints a failure message when the input is incorrect.</p>
+
+    <h2>3. Inspect embedded strings</h2>
+    <p>Use <code>strings</code> to search for human-readable text embedded in the binary (this often reveals prompts, messages, or even the secret):</p>
+
+    <pre><code class="language-bash">yoyo@LAPTOP-9SQVR51F:~/RootMe/cracking$ strings ch1.bin -a
+/lib/ld-linux.so.2
+...
+PTRh@
+[^_]
+%s : "%s"
+Allocating memory
+Reallocating memory
+&lt;censored&gt;
+############################################################
+##        Bienvennue dans ce challenge de cracking        ##
+############################################################
+Veuillez entrer le mot de passe :
+Bien joue, vous pouvez valider l'epreuve avec le pass : %s!
+Dommage, essaies encore une fois.
+</code></pre>
+
+    <p>Observations:</p>
+    <ul>
+      <li>Welcome and prompt strings are present inside the binary.</li>
+      <li>The success string uses a printf placeholder: <code>... vous pouvez valider l'epreuve avec le pass : %s!</code> — indicating the password is printed by the program on success.</li>
+      <li>A likely password string appears in the <code>strings</code> output (redacted here as <code>&lt;censored&gt;</code> in the write-up).</li>
+    </ul>
+
+    <h2>4. Test the discovered password (redacted)</h2>
+    <p>Providing the (redacted) password to the program yields the success message:</p>
+
+    <pre><code class="language-bash">dboujnane@krick:~/espaces/travail/M1/S2/sl/rootme/cracking$ ./ch1.bin 
+############################################################
+##        Bienvennue dans ce challenge de cracking        ##
+############################################################
+
+Veuillez entrer le mot de passe : &lt;censored&gt;
+Bien joue, vous pouvez valider l'epreuve avec le pass : &lt;censored&gt;!
+</code></pre>
+
+  </article>
+</body>
+</html>

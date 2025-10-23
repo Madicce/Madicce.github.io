@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Root-Me: ELF MIPS - Basic Crackme</title>
+  <meta name="description" content="Write-up: Reverse-engineering an ELF x86 32-bit dynamically linked binary with no protections — analysis, strings, and result.">
+  <meta name="author" content="You">
+  <meta name="date" content="2025-10-23" />
+  
+</head>
+<body>
+  <header>
+    <h1>Root-Me: ELF x86 — No Protection</h1>
+    <p class="meta">Category: Binary Exploitation • Difficulty: Easy • Date: 2025-10-23</p>
+    <link rel="stylesheet" href="style.css">
+  </header>
+
+  <article>
+<div class="contener">
+<h2>ELF MIPS - Basic Crackme</h2>
+
+<p>Let's analyze the file type with the <code>file</code> command.</p>
+
+<pre><code class="bash">yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf mips - basic crackme$ file ch27.bin
+ch27.bin: ELF 32-bit LSB executable, MIPS, MIPS32 rel2 version 1 (SYSV), dynamically linked, interpreter /lib/ld-uClibc.so.0, stripped
+</code></pre>
+
+<p>The file <code>ch27.bin</code> is a 32-bit ELF executable for MIPS32 rel2, dynamically linked, using the interpreter <code>/lib/ld-uClibc.so.0</code>, and stripped (no debug symbols).</p>
+
+<h3>Decompilation with Ghidra</h3>
+
+<pre><code class="c">undefined4 main(void)
+{
+  size_t len_your_passswd;
+  undefined4 i;
+  char your_passwd [4];
+  char local_50, local_4f, local_4e, local_4d;
+  char local_4c[9], local_43, local_42;
+  undefined4 val_return;
+  
+  puts("crack-me for Root-me by s4r");
+  puts("Enter password please");
+  fgets(your_passwd,0x40,_stdin);
+  len_your_passswd = strlen(your_passwd);
+  your_passwd[len_your_passswd - 1] = '\0';
+  len_your_passswd = strlen(your_passwd);
+  if (len_your_passswd == 0x13) {
+    for (i = 8; i < 0x11; i++) {
+      if (your_passwd[i] != 'i') {
+        FUN_00400814();
+        return 0;
+      }
+    }
+    if (local_42 == 's' && local_43 == 'p' && local_4d == 'm' &&
+        your_passwd[2] == 'n' && local_4e == 'n' &&
+        your_passwd[0] == 'c' && your_passwd[1] == 'a' &&
+        your_passwd[3] == 't' &&
+        local_50 == 'r' && local_4f == 'u') {
+      FUN_004007c0();
+      return val_return;
+    } else {
+      FUN_00400814();
+    }
+  } else {
+    FUN_00400814();
+  }
+  return 0;
+}
+
+undefined4 FUN_00400814(void)
+{
+  printf("fail!");
+  return 0;
+}
+
+undefined4 FUN_004007c0(void)
+{
+  printf("well done!");
+  return 0;
+}
+</code></pre>
+
+<p>Notes:</p>
+<ul>
+  <li>The <code>your_passwd</code> array has size 4 but <code>fgets</code> reads up to 64 characters → buffer overflow possible.</li>
+  <li>The stack layout shows how each character of <code>your_passwd</code> maps to local variables.</li>
+  <li>The expected password length is 19 (0x13).</li>
+</ul>
+</div>
+
+  </article>
+</body>
+</html>

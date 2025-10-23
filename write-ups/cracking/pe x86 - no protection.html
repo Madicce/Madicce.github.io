@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Root-Me: PE x86 - No Protection</title>
+  <meta name="description" content="Write-up: Reverse-engineering a PE32 x86 console binary with no protections — analysis, strings, disassembly, and result.">
+  <meta name="author" content="You">
+  <meta name="date" content="2025-10-23" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Root-Me: PE x86 — No Protection</h1>
+      <p class="meta">Category: Binary/Reverse Engineering • Difficulty: Easy • Date: 2025-10-23</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <article>
+        <p><strong>Goal:</strong> Reverse engineer a provided PE32 (x86) console binary to discover the correct password passed via command line and validate the challenge.</p>
+
+        <h2>1. Identify the file type</h2>
+        <p>Start by checking the file type with <code>file</code>:</p>
+        <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme/craking$ file ch15.exe
+ch15.exe: PE32 executable (console) Intel 80386 (stripped to external PDB), for MS Windows
+</code></pre>
+
+        <p>Notes from the output:</p>
+        <ul>
+          <li>PE32 (Windows 32-bit) console application for Intel 80386.</li>
+          <li>The executable is stripped, but an external PDB (Program Database) is present — so debug symbols are available separately.</li>
+          <li>No obfuscation is suggested by the metadata.</li>
+        </ul>
+
+        <h2>2. Run the program</h2>
+        <p>Running the binary shows how it accepts input:</p>
+        <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme$ ./ch15.exe
+Usage: ch15.exe pass
+</code></pre>
+        <p>The program expects the password passed as a command-line argument: <code>./ch15.exe &lt;pass&gt;</code>.</p>
+
+        <h2>3. Inspect embedded strings</h2>
+        <p>Use <code>strings</code> to look for useful messages that indicate program behavior:</p>
+        <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme/craking$ strings ch15.exe
+...
+Usage: %s pass
+Gratz man :)
+Wrong password
+Unknown error
+...
+</code></pre>
+
+        <p>Observations:</p>
+        <ul>
+          <li>The string <strong>"Gratz man :)"</strong> indicates success — it is printed when the provided password is correct.</li>
+          <li>The real password is not present verbatim in the strings output, so it is likely checked character-by-character in code.</li>
+        </ul>
+
+        <h2>4. Disassemble / debug to find the check</h2>
+        <p>Open the binary in a Windows debugger/disassembler (e.g. Immunity Debugger, x64dbg, IDA) and inspect the routine that processes command-line arguments. The disassembly shows a series of comparisons between a register (AL) and immediate byte values: <code>0x53 0x50 0x61 0x43 0x49 0x6F 0x53</code>. Each compared byte corresponds to one character of the expected password.</p>
+
+        <div class="figure">
+          <img src="51.png" alt="Disassembly showing byte comparisons (example screenshot)">
+          <figcaption>Disassembly: character-by-character comparisons against immediate byte values.</figcaption>
+        </div>
+
+        <p>These hex values (in order) are the ASCII codes for the password characters. Converting them to ASCII yields the password string.</p>
+
+        <h2>5. Convert hex bytes to ASCII</h2>
+        <p>Here is a simple Python script used to convert the hex array to a readable string:</p>
+        <pre><code class="language-python">hex_array = [0x53, 0x50, 0x61, 0x43, 0x49, 0x6F, 0x53]
+ascii_string = ''.join(chr(x) for x in hex_array if 0x20 <= x <= 0x7E or x in (0x0A, 0x0D))
+print(ascii_string)</code></pre>
+
+        <p>Running the script prints the discovered password (redacted here):</p>
+        <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme$ python3 ascii.py
+&lt;censored&gt;
+</code></pre>
+
+        <h2>6. Test the password</h2>
+        <p>Provide the discovered password as a command-line argument to verify the program responds with the success string:</p>
+        <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme$ ./ch15.exe &lt;censored&gt;
+Gratz man :)yoyo@LAPTOP:~/M1/S2/SL/rootme$
+</code></pre>
+
+        <div class="note">
+          <strong>Important:</strong> The actual password has been intentionally censored in this write-up. When adding this to your public portfolio, do not reveal real flags. Replace them with <code>FLAG{...}</code> or explain the retrieval technique without revealing the secret.
+        </div>
+
+        <h2>7. Conclusion / Notes</h2>
+        <ul>
+          <li>This PE32 challenge is straightforward: the program checks the command-line argument byte-by-byte against a hardcoded sequence of ASCII values. Disassembly revealed the expected bytes.</li>
+          <li>Because the binary is stripped but has an external PDB, debugging and symbol analysis can be easier if the PDB is available.</li>
+          <li>Tools useful for this challenge: <code>file</code>, <code>strings</code>, a Windows disassembler/debugger (Immunity/x64dbg/IDA/Ghidra), and a short scripting language (Python) to convert hex to ASCII.</li>
+        </ul>
+
+      
+      </article>
+    </div>
+  </main>
+
+</body>
+</html>

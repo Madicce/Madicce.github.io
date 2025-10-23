@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PE DotNet - 0 protection</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="conteneur">
+      <h1>PE DotNet - 0 protection</h1>
+
+      <p>We start the analysis of the file by identifying its type using the <code>file</code> command.</p>
+
+      <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme/craking$ file ch22.exe
+ch22.exe: PE32 executable (GUI) Intel 80386 Mono/.Net assembly, for MS Windows
+      </code></pre>
+
+      <p>The file <code>ch22.exe</code> is a Windows PE32 executable for a GUI application. 
+      It is developed using Mono or .NET and should therefore be run in a .NET Framework or Mono-compatible environment. 
+      This file targets a 32-bit architecture. As before, no obfuscation methods are used.</p>
+
+      <p>When executing the binary, a window opens:</p>
+      <img src="63.png" alt="Executable output">
+
+      <p>The program asks for a password. We decompile the executable using the dnSpy tool. 
+      dnSpy is an open-source tool mainly used to analyze and decompile .NET assemblies (.exe, .dll, etc.).</p>
+
+      <pre><code class="language-c">private void Button1_Click(object sender, EventArgs e)
+{
+    if (Operators.CompareString(TextBox1.Text, "&lt;censored&gt;", false) == 0)
+    {
+        Interaction.MsgBox((object)"Bravo! You can validate with this password\r\nWell done! You can validate with this password", (MsgBoxStyle)0, (object)null);
+    }
+    else
+    {
+        Interaction.MsgBox((object)"Wrong password\r\nBad password", (MsgBoxStyle)0, (object)null);
+    }
+}
+      </code></pre>
+
+      <p>The source files are written in C#. In <code>ch22.exe/CrackMe/Form1.cs</code>, the <code>Button1_Click</code> method is called when the user presses the "Validate" button. 
+      The <code>Operators.CompareString</code> function checks if the string entered by the user matches the <censored> string. 
+      The <code>if</code> statement evaluates the result of <code>Operators.CompareString</code>.</p>
+
+      <img src="64.png" alt="Result">
+    </div>
+  </body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>APK - Introduction</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="conteneur">
+      <h1>APK - Introduction</h1>
+
+      <p>The obfuscation methods in this challenge are:</p>
+      <ul>
+        <li>The provided file is an <code>.apk</code>, which makes analyzing the code more difficult. 
+        However, it is possible to use a decompiler as we will do later.</li>
+        <li>The source code uses generic variable names and multiple operations, complicating analysis and understanding.</li>
+      </ul>
+
+      <p>The provided file is an APK, which is a format used to distribute and install applications on Android devices. 
+      We will use the Decompiler website to decompile the APK and access the source code. 
+      Upon decompilation, we notice the source files are written in Java. 
+      Exploring the decompiled files, we find <code>MainActivity.java</code> in <code>basic_rev.apk/sources/com/example/basic_rev/</code>. 
+      This file contains a method <code>makeFlag</code>:</p>
+
+      <pre><code class="language-java">public class MainActivity extends Activity {
+  Button b1;
+  EditText ed1;
+
+  public String makeFlag(String s) {
+    String _b;
+    String a = "" + s.charAt(5);
+    String _b2 = s.charAt(2) + "";
+    for (int s_ = 0; s_ < s.length(); s_++) {
+      String b = _b2.substring(_b2.length() - s_) + _b2.substring(s_);
+      if (s_ >= 3) {
+        _b = _b2 + s.charAt(s_ - 3) + "";
+      } else {
+        _b = _b2 + s.charAt(s.length() - (3 - s_)) + "";
+      }
+      if (s_ >= _b.length()) {
+        _b2 = _b + s.charAt(s_ - _b.length()) + "";
+      } else if (s.length() >= _b.length() - s_) {
+        _b2 = _b + s.charAt(s.length() - (_b.length() - s_)) + "";
+      } else {
+        _b2 = _b + s.charAt(s.length() - ((_b.length() - s_) - s.length())) + "";
+      }
+      a = a + b.charAt((((s.length() + _b2.length()) * s_) + _b2.length()) % b.length());
+    }
+    return a.substring(0, 2) + s.charAt(3) + a.charAt(3) + '0' + a.substring(5, 7);
+  }
+}
+      </code></pre>
+
+      <p>This method takes a string as input and returns a new constructed string. 
+      The input string is compared with the real password using the <code>makeFlag</code> method. 
+      The variable <code>seed</code> is defined in <code>basic_rev.apk</code> resources, 
+      specifically in <code>basic_rev.apk/resources/res/values/strings.xml</code>:</p>
+
+      <pre><code class="language-xml">
+<string name="path_password_strike_through">M3.27,4.27 L19.74,20.74</string>
+<string name="search_menu_title">Search</string>
+<string name="seed">1dndr@</string>
+      </code></pre>
+
+      <p>The initial <code>seed</code> value is <code>1dndr@</code> and is modified by <code>makeFlag</code> 
+      to produce the actual password for the challenge. 
+      We replicate the <code>makeFlag</code> method in Java:</p>
+
+      <pre><code class="language-java">public class Main {
+  public static void main(String[] args) {
+    String s = "1dndr@";
+    String a = "" + s.charAt(5);
+    String _b2 = s.charAt(2) + "";
+    String _b = "";
+    for (int s_ = 0; s_ < s.length(); s_++) {
+      String b = _b2.substring(_b2.length() - s_) + _b2.substring(s_);
+      if (s_ >= 3) {
+        _b = _b2 + s.charAt(s_ - 3) + "";
+      } else {
+        _b = _b2 + s.charAt(s.length() - (3 - s_)) + "";
+      }
+      if (s_ >= _b.length()) {
+        _b2 = _b + s.charAt(s_ - _b.length()) + "";
+      } else if (s.length() >= _b.length() - s_) {
+        _b2 = _b + s.charAt(s.length() - (_b.length() - s_)) + "";
+      } else {
+        _b2 = _b + s.charAt(s.length() - ((_b.length() - s_) - s.length())) + "";
+      }
+      a = a + b.charAt((((s.length() + _b2.length()) * s_) + _b2.length()) % b.length());
+    }
+    String final_string = a.substring(0, 2) + s.charAt(3) + (a.length() > 3 ? a.charAt(3) : '0') + '0' + a.substring(5, 7);
+    System.out.println(final_string);
+  }
+}
+      </code></pre>
+
+      <p>Executing this yields the password:</p>
+
+      <pre><code class="language-bash">yoyo@LAPTOP:~/M1/S2/SL/rootme/craking$ java Main.java
+&lt;censored&gt;
+      </code></pre>
+
+    </div>
+  </body>
+</html>
