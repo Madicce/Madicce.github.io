@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ELF x86 - Fake Instructions & Ptrace</title>
+  
+</head>
+<body>
+  <header>
+    <link rel="stylesheet" href="../../style.css">
+    <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
+  </header>
+  <article>
+    <h1>ELF x86 - Fake Instructions</h1>
+    
+    <h2>Initial Analysis</h2>
+    <p>Let's analyze the file with the <code>file</code> command:</p>
+    <pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf x86 - fake instruction$ file crackme
+crackme: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked, 
+interpreter /lib/ld-linux.so.2, for GNU/Linux 2.6.8, with debug_info, not stripped</code></pre>
+    
+    <p>The <code>crackme</code> file is a 32-bit ELF executable for the x86 architecture (Intel 80386), compiled for Linux with dynamic linking to shared libraries via the interpreter <code>/lib/ld-linux.so.2</code>. It contains debug information and has not been "stripped", which means that symbols (function names, variables, etc.) are still present in the binary.</p>
+    
+    <p>The main obfuscation method relies on "fake instructions" such as indirect jumps (which we will detail later). In this assembly code, several functions are implemented such as <code>AES</code>, <code>RSA</code>, <code>blowfish</code>, <code>WPA</code> and <code>main</code>. The first four functions suggest encryption/decryption operations.</p>
+
+    <h2>Main Function Analysis</h2>
+    <p>Let's analyze the <code>main</code> function:</p>
+    <pre><code>804858a:       8b 85 64 ff ff ff       mov    -0x9c(%ebp),%eax
+8048590:       8b 00                   mov    (%eax),%eax
+8048592:       89 44 24 04             mov    %eax,0x4(%esp)
+8048596:       c7 04 24 f0 88 04 08    movl   $0x80488f0,(%esp)
+804859d:       e8 9a fe ff ff          call   804843c &lt;printf@plt&gt;
+80485a2:       c7 04 24 00 00 00 00    movl   $0x0,(%esp)
+80485a9:       e8 de fe ff ff          call   804848c &lt;exit@plt&gt;</code></pre>
+    
+    <p>Here, the function tests if an argument is passed on the command line. Otherwise, it displays the correct syntax as illustrated here:</p>
+    <pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf x86 - fake instruction$ ./crackme
+(*) -Syntaxe: ./crackme [password]</code></pre>
+
+    <h2>Indirect Function Call Discovery</h2>
+    <p>By analyzing the code in more detail, we notice a particular instruction:</p>
+    <pre><code>804868b:       c6 00 2e                movb   $0x2e,(%eax)
+804868e:       8b 15 38 a0 04 08       mov    0x804a038,%edx
+8048694:       8b 85 6c ff ff ff       mov    -0x94(%ebp),%eax</code></pre>
+    
+    <p>At instruction <code>0x804868e</code>, the address <code>0x804a038</code> is stored in <code>edx</code>. Looking at the code further, we notice that this address is none other than the address of <code>WPA</code>. Further on, we notice a call to <code>*%edx</code>, more specifically to <code>0x804a038</code>.</p>
+
+    <h2>Register State Before WPA Call</h2>
+    <pre><code>[----------------------------------registers-----------------------------------]
+EAX: 0xffffd09e ("helloworld")
+EBX: 0xf7fa3000 --&gt; 0x225dac
+ECX: 0xffffd32d ("helloworld")
+EDX: 0x80486c4 (&lt;WPA&gt;:  push   ebp)
+ESI: 0xffffd194 --&gt; 0xffffd2e7 ("/home/yoyo/M1/S2/SL/rootme/craking/elf x86 - fake instruction/crackme")
+EDI: 0xffffd09e ("helloworld")
+EBP: 0xffffd0c8 --&gt; 0xf7ffd020 --&gt; 0xf7ffda40 --&gt; 0x0
+ESP: 0xffffd010 --&gt; 0xffffd09e ("helloworld")
+EIP: 0x80486a4 (&lt;main+336&gt;:     call   edx)
+EFLAGS: 0x206 (carry PARITY adjust zero sign trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+    0x804869a &lt;main+326&gt;:        mov    DWORD PTR [esp+0x4],eax
+    0x804869e &lt;main+330&gt;:        lea    eax,[ebp-0x2a]
+    0x80486a1 &lt;main+333&gt;:        mov    DWORD PTR [esp],eax
+=&gt; 0x80486a4 &lt;main+336&gt;:        call   edx
+    0x80486a6 &lt;main+338&gt;:        mov    edx,DWORD PTR [ebp-0xc]
+    0x80486a9 &lt;main+341&gt;:        xor    edx,DWORD PTR gs:0x14
+    0x80486b0 &lt;main+348&gt;:        je     0x80486b7 &lt;main+355&gt;
+    0x80486b2 &lt;main+350&gt;:        call   0x804845c &lt;__stack_chk_fail@plt&gt;
+Guessed arguments:
+arg[0]: 0xffffd09e ("helloworld")
+arg[1]: 0x804b1a0 ("_0cGjc5m_.5T3Ç8CJ0À9")
+[------------------------------------stack-------------------------------------]
+0000| 0xffffd010 --&gt; 0xffffd09e ("helloworld")
+0004| 0xffffd014 --&gt; 0x804b1a0 ("_0cGjc5m_.5T3Ç8CJ0À9")
+0008| 0xffffd018 --&gt; 0xd ('\r')
+0012| 0xffffd01c --&gt; 0x19
+0016| 0xffffd020 --&gt; 0x0
+0020| 0xffffd024 --&gt; 0xffffd03a ("_Celebration")
+0024| 0xffffd028 --&gt; 0xffffd0a4 ("orld")
+0028| 0xffffd02c --&gt; 0xffffd194</code></pre>
+    
+    <p>The <code>WPA</code> function therefore takes two parameters: the string "helloworld" that we sent on the command line, then <code>_0cGjc5m_.5T3Ç8CJ0À9</code>. Let's now analyze the <code>WPA</code> function.</p>
+
+    <h2>WPA Function Analysis</h2>
+    <pre><code>gdb-peda$ c
+Continuing.
+Vérification de votre mot de passe..
+[----------------------------------registers-----------------------------------]
+EAX: 0xffffd09e ("helloworld")
+EBX: 0xf7fa3000 --&gt; 0x225dac
+ECX: 0xf7fa49b4 --&gt; 0x0
+EDX: 0x1
+ESI: 0xffffd194 --&gt; 0xffffd2e7 ("/home/yoyo/M1/S2/SL/rootme/craking/elf x86 - fake instruction/crackme")
+EDI: 0xffffd09e ("helloworld")
+EBP: 0xffffd008 --&gt; 0xffffd0c8 --&gt; 0xf7ffd020 --&gt; 0xf7ffda40 --&gt; 0x0
+ESP: 0xffffd000 --&gt; 0xffffd09e ("helloworld")
+EIP: 0x80486f5 (&lt;WPA+49&gt;:       call   0x804847c &lt;strcmp@plt&gt;)
+EFLAGS: 0x246 (carry PARITY adjust ZERO sign trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+   0x80486eb &lt;WPA+39&gt;:  mov    DWORD PTR [esp+0x4],eax
+   0x80486ef &lt;WPA+43&gt;:  mov    eax,DWORD PTR [ebp+0x8]
+   0x80486f2 &lt;WPA+46&gt;:  mov    DWORD PTR [esp],eax
+=&gt; 0x80486f5 &lt;WPA+49&gt;:  call   0x804847c &lt;strcmp@plt&gt;
+   0x80486fa &lt;WPA+54&gt;:  test   eax,eax
+   0x80486fc &lt;WPA+56&gt;:  jne    0x804870f &lt;WPA+75&gt;
+   0x80486fe &lt;WPA+58&gt;:  call   0x804872c &lt;blowfish&gt;
+   0x8048703 &lt;WPA+63&gt;:  mov    DWORD PTR [esp],0x0
+Guessed arguments:
+arg[0]: 0xffffd09e ("helloworld")
+arg[1]: 0x804b1a0 ("_0cGjc5m_.5\r\nÇ8CJ0À9")
+[------------------------------------stack-------------------------------------]
+0000| 0xffffd000 --&gt; 0xffffd09e ("helloworld")
+0004| 0xffffd004 --&gt; 0x804b1a0 ("_0cGjc5m_.5\r\nÇ8CJ0À9")
+0008| 0xffffd008 --&gt; 0xffffd0c8 --&gt; 0xf7ffd020 --&gt; 0xf7ffda40 --&gt; 0x0
+0012| 0xffffd00c --&gt; 0x80486a6 (&lt;main+338&gt;:     mov    edx,DWORD PTR [ebp-0xc])
+0016| 0xffffd010 --&gt; 0xffffd09e ("helloworld")
+0020| 0xffffd014 --&gt; 0x804b1a0 ("_0cGjc5m_.5\r\nÇ8CJ0À9")
+0024| 0xffffd018 --&gt; 0xd ('\r')
+0028| 0xffffd01c --&gt; 0x19</code></pre>
+    
+    <p>In the <code>WPA</code> function, a call to <code>strcmp</code> is implemented on the arguments "helloworld" and <code>_0cGjc5m_.5\r\nÇ8CJ0À9</code>. The <code>strcmp</code> function is used to test if the strings are equal. If the test succeeds, the <code>blowfish</code> function launches and displays the correct flag. By advancing to <code>0x80486fa</code>, we can simply modify the <code>eax</code> register with <code>set $eax=0</code>.</p>
+
+    <h2>Bypassing the Check</h2>
+    <pre><code>gdb-peda$ set $eax=0
+gdb-peda$ p $eax
+$1 = 0x0</code></pre>
+    
+    <p>We continue execution and enter the <code>blowfish</code> function which generates the flag:</p>
+    <pre><code>gdb-peda$ n
+'+) Authentification réussie...
+  U'r root!
+
+  sh 3.0  password: &lt;censored&gt;
+[Inferior 1 (process 3030) exited normally]</code></pre>
+
+    <hr>
+
+    <h2>Challenge 2: ELF x86 - Ptrace</h2>
+    
+    <h2>Initial Analysis</h2>
+    <p>Let's analyze the file with the <code>file</code> command:</p>
+    <pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf x86 - ptrace$ file ch2.bin
+ch2.bin: ELF 32-bit LSB executable, Intel 80386, version 1 (GNU/Linux), statically linked, 
+for GNU/Linux 2.6.9, not stripped</code></pre>
+    
+    <p>The <code>ch2.bin</code> file is a 32-bit ELF executable for the Intel x86 architecture, compiled for a relatively old version of GNU/Linux (2.6.9). It is statically linked, which means it includes all necessary libraries in the binary. Additionally, the binary has not been stripped, which makes analyzing its content easier thanks to non-removed debug information.</p>
+    
+    <p>The main obfuscation method used here is the call to the <code>ptrace</code> function. More formally, the binary implements an anti-debugging function that we will need to bypass.</p>
+
+    <h2>Symbol Table Analysis</h2>
+    <p>Let's first observe the symbol table of the executable:</p>
+    <pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf x86 - ptrace$ objdump -t ch2.bin
+
+ch2.bin:     file format elf32-i386
+
+SYMBOL TABLE:
+08048114 l    d  .note.ABI-tag  00000000 .note.ABI-tag
+08048134 l    d  .rel.plt       00000000 .rel.plt
+080481bc l    d  .init  00000000 .init
+080481e0 l    d  .plt   00000000 .plt
+080482f0 l    d  .text  00000000 .text
+080c1ce0 l    d  __libc_freeres_fn      00000000 __libc_freeres_fn
+080c27e0 l    d  __libc_thread_freeres_fn       00000000 __libc_thread_freeres_fn
+080c2854 l    d  .fini  00000000 .fini
+080c2880 l    d  .rodata        00000000 .rodata
+...
+00000000 l    df *ABS*  00000000 ch2.c</code></pre>
+    
+    <p>We see the file <code>ch2.c</code>. So this executable was written in C.</p>
+
+    <h2>Main Function Analysis</h2>
+    <p>Let's now observe the beginning of the assembly code of the <code>main</code> function:</p>
+    <pre><code>080483f0 &lt;main&gt;:
+80483f0:	8d 4c 24 04          	lea    0x4(%esp),%ecx
+80483f4:	83 e4 f0             	and    $0xfffffff0,%esp
+80483f7:	ff 71 fc             	push   -0x4(%ecx)
+80483fa:	55                   	push   %ebp
+80483fb:	89 e5                	mov    %esp,%ebp
+80483fd:	51                   	push   %ecx
+80483fe:	83 ec 14             	sub    $0x14,%esp
+8048401:	c7 45 f4 88 28 0c 08 	movl   $0x80c2888,-0xc(%ebp)
+8048408:	6a 00                	push   $0x0
+804840a:	6a 01                	push   $0x1
+804840c:	6a 00                	push   $0x0
+804840e:	6a 00                	push   $0x0
+8048410:	e8 5b 06 01 00       	call   8058a70 &lt;ptrace&gt;
+8048415:	83 c4 10             	add    $0x10,%esp
+8048418:	85 c0                	test   %eax,%eax
+804841a:	79 1a                	jns    8048436 &lt;main+0x46&gt;
+804841c:	83 ec 0c             	sub    $0xc,%esp
+804841f:	68 94 28 0c 08       	push   $0x80c2894
+8048424:	e8 a7 0e 00 00       	call   80492d0 &lt;_IO_puts&gt;
+8048429:	83 c4 10             	add    $0x10,%esp
+804842c:	b8 01 00 00 00       	mov    $0x1,%eax
+8048431:	e9 c3 00 00 00       	jmp    80484f9 &lt;_notng+0x62&gt;
+8048436:	83 ec 0c             	sub    $0xc,%esp
+8048439:	68 b0 28 0c 08       	push   $0x80c28b0
+804843e:	e8 8d 0e 00 00       	call   80492d0 &lt;_IO_puts&gt;
+8048443:	83 c4 10             	add    $0x10,%esp
+8048446:	83 ec 0c             	sub    $0xc,%esp
+8048449:	68 f0 28 0c 08       	push   $0x80c28f0
+804844e:	e8 7d 0e 00 00       	call   80492d0 &lt;_IO_puts&gt;
+8048453:	83 c4 10             	add    $0x10,%esp
+8048456:	83 ec 0c             	sub    $0xc,%esp
+8048459:	68 30 29 0c 08       	push   $0x80c2930
+804845e:	e8 6d 0e 00 00       	call   80492d0 &lt;_IO_puts&gt;
+8048463:	83 c4 10             	add    $0x10,%esp
+8048466:	b8 6e 29 0c 08       	mov    $0x80c296e,%eax
+804846b:	83 ec 0c             	sub    $0xc,%esp
+804846e:	50                   	push   %eax</code></pre>
+    
+    <p>The function starts with a call to <code>ptrace</code> which detects the use of the debugger. To bypass it, we can modify the value of the <code>eax</code> register and set it to zero.</p>
+
+    <h2>Bypassing Ptrace Protection</h2>
+    <pre><code>[----------------------------------registers-----------------------------------]
+EAX: 0xffffffff
+EBX: 0x0
+ECX: 0x0
+EDX: 0xffffffe8
+ESI: 0x8048bc0 (&lt;__libc_csu_fini&gt;:      push   ebp)
+EDI: 0x8048b20 (&lt;__libc_csu_init&gt;:      push   ebp)
+EBP: 0xffffd128 --&gt; 0xffffd198 --&gt; 0x0
+ESP: 0xffffd110 --&gt; 0x1
+EIP: 0x8048418 (&lt;main+40&gt;:      test   eax,eax)
+EFLAGS: 0x282 (carry parity adjust zero SIGN trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+    0x804840e &lt;main+30&gt;: push   0x0
+    0x8048410 &lt;main+32&gt;: call   0x8058a70 &lt;ptrace&gt;
+    0x8048415 &lt;main+37&gt;: add    esp,0x10
+=&gt; 0x8048418 &lt;main+40&gt;: test   eax,eax
+    0x804841a &lt;main+42&gt;: jns    0x8048436 &lt;main+70&gt;
+    0x804841c &lt;main+44&gt;: sub    esp,0xc
+    0x804841f &lt;main+47&gt;: push   0x80c2894
+    0x8048424 &lt;main+52&gt;: call   0x80492d0 &lt;puts&gt;
+[------------------------------------stack-------------------------------------]
+0000| 0xffffd110 --&gt; 0x1
+0004| 0xffffd114 --&gt; 0xffffd1c4 --&gt; 0xffffd310 ("/home/yoyo/M1/S2/SL/rootme/craking/elf x86 - ptrace/ch2.bin")
+0008| 0xffffd118 --&gt; 0xffffd138 --&gt; 0xffffd198 --&gt; 0x0
+0012| 0xffffd11c --&gt; 0x80c2888 ("ksuiealohgy")
+0016| 0xffffd120 --&gt; 0x8048bc0 (&lt;__libc_csu_fini&gt;:      push   ebp)
+0020| 0xffffd124 --&gt; 0xffffd140 --&gt; 0x1
+0024| 0xffffd128 --&gt; 0xffffd198 --&gt; 0x0
+0028| 0xffffd12c --&gt; 0x804868a (&lt;__libc_start_main+378&gt;:        mov    DWORD PTR [esp],eax)
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+
+Breakpoint 1, 0x08048418 in main ()
+gdb-peda$ set $eax=0
+gdb-peda$ p $eax
+$1 = 0x0</code></pre>
+
+    <h2>Password Extraction</h2>
+    <p>After bypassing this condition, four calls to <code>printf</code> are executed for display, then comes the call to <code>fgets</code> to retrieve the input string. The call to <code>fgets</code> suggests that the given string will be limited in size. At the end of the <code>main</code> function, the function calls the function at address <code>0x8048497</code> in <code>eax</code>, which corresponds to the <code>_notng</code> function.</p>
+    
+    <p>In this function, four comparisons are made between the <code>al</code> and <code>dl</code> registers. By executing with gdb, we can see by observing the values that <code>al</code> corresponds to the real password and <code>dl</code> corresponds to the string given by the user. The characters taken by <code>al</code> are <code>0x65</code>, <code>0x61</code>, <code>0x73</code> and <code>0x79</code>. These characters are retrieved from <code>eax</code>, more specifically from the string "ksuiealoghy". We test this new password.</p>
+
+    <h2>Final Solution</h2>
+    <pre><code>yoyo@LAPTOP-9SQVR51F:~/M1/S2/SL/rootme/craking/elf x86 - ptrace$ ./ch2.bin
+############################################################
+##        Bienvennue dans ce challenge de cracking        ##
+############################################################
+
+Password : &lt;censored&gt;
+
+Good password !!!</code></pre>
+  </article>
+</body>
+</html>
