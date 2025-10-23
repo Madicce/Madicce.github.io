@@ -9,8 +9,6 @@
   <meta name="date" content="2025-10-23" />
 </head>
 <header>
-    <h1>Root-Me: ELF x86 — Basic</h1>
-    <p class="meta">Category: Binary Exploitation • Difficulty: Easy • Date: 2025-10-23</p>
     <link rel="stylesheet" href="../../style.css">
     <style>
       ul.liste-normale {
@@ -24,7 +22,7 @@
   </header>
 
   <article>
-    <div class="container">
+      <h1>Root-Me: ELF x86 — Basic</h1>
 <p><strong>Goal:</strong> Analyze the provided ELF binary to find the username/password required to validate the challenge.</p>
 
     <h2>1. Identify the file type</h2>
@@ -89,7 +87,6 @@ Bad username
       <li>Optional follow-ups: use <code>objdump</code>, <code>readelf</code> or a disassembler (e.g. Ghidra/Radare2/IDA) to inspect control flow or confirm how credentials are compared.</li>
       <li>For reproducibility in a private repo: include the binary (if permissible), a small test script demonstrating the check, and a short note listing the tools used (<code>file</code>, <code>strings</code>, <code>objdump</code>, etc.).</li>
     </ul>
-    </div>
 </article>
 </body>
 </html>
