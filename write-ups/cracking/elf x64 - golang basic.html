@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ELF x64 - Golang Basic</title>
+  
+</head>
+<body>
+  <header>
+    <h1>ELF x64 - Golang Basic</h1>
+    <p class="meta">Category: Binary Exploitation • Difficulty: Easy • Date: 2025-10-23</p>
+    <link rel="stylesheet" href="../../style.css">
+        <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
+  </header>
+  <article>
+    html<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ELF x64 - Basic Golang Challenge</title>
+  
+</head>
+<body>
+  <header>
+    <h1>ELF x64 - Basic Golang Challenge</h1>
+    <p class="meta">Category: Binary Exploitation • Difficulty: Easy • Date: 2025-10-23</p>
+    <link rel="stylesheet" href="../../style.css">
+    <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
+  </header>
+  <article>
+    <h2>Initial Analysis</h2>
+    <p>Let's analyze the file with the <code>file</code> command:</p>
+    <pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf x64 - Golang basique$ file ch32.bin
+ch32.bin: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, 
+Go BuildID=2cf6d44559551c6185a598406fb67318d5b2396e, with debug_info, not stripped</code></pre>
+    
+    <p>The file <code>ch32.bin</code> is a 64-bit Linux binary compiled in Go, statically linked, with debug symbols not stripped. In this binary, the obfuscation method relies on multiple instructions (corresponding to encryption) which will be detailed later.</p>
+    
+    <p>When we execute the binary file:</p>
+    <pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme$ ./ch32.bin
+hello
+wrong flagyoyo@LAPTOP:~/M1/S2/SL/rootme$</code></pre>
+    
+    <p>A flag is requested via standard input, which allows us to verify if the provided flag is the expected one.</p>
+
+    <h2>Symbol Table Analysis</h2>
+    <p>First, we need to identify the source code language of this file (i.e., in which programming language the file is written) for better understanding of the functions used. To do this, we examine the file's symbol table by executing:</p>
+    <pre><code>objdump -t ch32.bin</code></pre>
+    
+    <pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme$ objdump -t ch32.bin
+
+ch32.bin:     file format elf64-x86-64
+
+SYMBOL TABLE:
+0000000000000000 l    df *ABS*  0000000000000000 go.go
+0000000000401000 l     F .text  0000000000000000 runtime.text
+0000000000493180 l     F .text  0000000000000000 runtime.etext
+...</code></pre>
+    
+    <p>The first element of the table shows a <code>go.go</code> symbol, which means the source code is written in Go. Additionally, the <code>Fmt.Fprint</code> symbol is present for display operations. We know that user input is requested to enter the password, then a comparison is made to determine if the correct flag is given. We can think of either a simple comparison or decryption based on an operation. Let's analyze the assembly code with:</p>
+    <pre><code>objdump -Sd ch32.bin</code></pre>
+
+    <h2>Assembly Code Analysis</h2>
+    <pre><code>0000000000492e70 &lt;main.main&gt;:
+492e70:       64 48 8b 0c 25 f8 ff    mov    %fs:0xfffffffffffffff8,%rcx
+492e77:       ff ff
+492e79:       48 8d 44 24 c8          lea    -0x38(%rsp),%rax
+492e7e:       48 3b 41 10             cmp    0x10(%rcx),%rax
+492e82:       0f 86 82 02 00 00       jbe    49310a &lt;main.main+0x29a&gt;
+492e88:       48 81 ec b8 00 00 00    sub    $0xb8,%rsp
+492e8f:       48 89 ac 24 b0 00 00    mov    %rbp,0xb0(%rsp)
+492e96:       00
+492e97:       48 8d ac 24 b0 00 00    lea    0xb0(%rsp),%rbp
+492e9e:       00
+492e9f:       48 8d 05 3a 05 01 00    lea    0x1053a(%rip),%rax
+492ea6:       48 89 04 24             mov    %rax,(%rsp)
+492eaa:       e8 51 bd f7 ff          call   40ec00 &lt;runtime.newobject&gt;
+492eaf:       48 8b 44 24 08          mov    0x8(%rsp),%rax
+492eb4:       48 89 44 24 78          mov    %rax,0x78(%rsp)
+492eb9:       48 c7 84 24 80 00 00    movq   $0x0,0x80(%rsp)
+492ec0:       00 00 00 00 00
+492ec5:       48 c7 84 24 88 00 00    movq   $0x0,0x88(%rsp)
+492ecc:       00 00 00 00 00
+492ed1:       48 8d 0d a8 be 00 00    lea    0xbea8(%rip),%rcx
+492ed8:       48 89 8c 24 80 00 00    mov    %rcx,0x80(%rsp)
+492edf:       00
+492ee0:       48 89 84 24 88 00 00    mov    %rax,0x88(%rsp)
+492ee7:       00
+492ee8:       48 8d 8c 24 80 00 00    lea    0x80(%rsp),%rcx
+492eef:       00
+492ef0:       48 89 0c 24             mov    %rcx,(%rsp)
+492ef4:       48 c7 44 24 08 01 00    movq   $0x1,0x8(%rsp)
+492efb:       00 00
+492efd:       48 c7 44 24 10 01 00    movq   $0x1,0x10(%rsp)
+492f04:       00 00
+492f06:       e8 65 aa ff ff          call   48d970 &lt;fmt.Scanln&gt;
+492f0b:       48 8b 05 2e 31 04 00    mov    0x4312e(%rip),%rax
+492f12:       48 8b 0d 2d 31 04 00    mov    0x4312d(%rip),%rcx
+492f19:       48 89 44 24 42          mov    %rax,0x42(%rsp)
+492f1e:       48 89 4c 24 48          mov    %rcx,0x48(%rsp)
+492f23:       48 8d 44 24 50          lea    0x50(%rsp),%rax
+492f28:       48 89 04 24             mov    %rax,(%rsp)
+492f2c:       48 8d 05 3a 15 03 00    lea    0x3153a(%rip),%rax
+492f33:       48 89 44 24 08          mov    %rax,0x8(%rsp)
+492f38:       48 c7 44 24 10 06 00    movq   $0x6,0x10(%rsp)
+492f3f:       00 00</code></pre>
+    
+    <p>We notice a call to <code>fmt.Scanln</code>, which corresponds to user input. Further on, we also notice calls to <code>&lt;runtime.stringtoslicebyte&gt;</code> and <code>&lt;runtime.makeslice&gt;</code>. After all these calls, we notice a loop at an instruction located at address <code>0x492fa2</code>.</p>
+
+    <h2>The XOR Loop</h2>
+    <pre><code>492fa7:       47 88 14 0c             mov    %r10b,(%r12,%r9,1)
+492fab:       48 ff c3                inc    %rbx
+492fae:       49 ff c1                inc    %r9
+492fb1:       4c 89 d8                mov    %r11,%rax
+492fb4:       4c 89 e2                mov    %r12,%rdx
+492fb7:       49 39 f1                cmp    %rsi,%r9
+492fba:       7d 43                   jge    492fff &lt;main.main+0x18f&gt;
+492fbc:       44 0f b6 13             movzbl (%rbx),%r10d
+492fc0:       48 85 ff                test   %rdi,%rdi
+492fc3:       0f 84 3a 01 00 00       je     493103 &lt;main.main+0x293&gt;
+492fc9:       49 89 c3                mov    %rax,%r11
+492fcc:       4c 89 c8                mov    %r9,%rax
+492fcf:       49 89 d4                mov    %rdx,%r12
+492fd2:       48 83 ff ff             cmp    $0xffffffffffffffff,%rdi
+492fd6:       74 07                   je     492fdf &lt;main.main+0x16f&gt;
+492fd8:       48 99                   cqto
+492fda:       48 f7 ff                idiv   %rdi
+492fdd:       eb 05                   jmp    492fe4 &lt;main.main+0x174&gt;
+492fdf:       48 f7 d8                neg    %rax
+492fe2:       31 d2                   xor    %edx,%edx
+492fe4:       48 39 fa                cmp    %rdi,%rdx
+492fe7:       0f 83 0f 01 00 00       jae    4930fc &lt;main.main+0x28c&gt;
+492fed:       41 0f b6 14 10          movzbl (%r8,%rdx,1),%edx
+492ff2:       41 31 d2                xor    %edx,%r10d
+492ff5:       49 39 c9                cmp    %rcx,%r9
+492ff8:       72 ad                   jb     492fa7 &lt;main.main+0x137&gt;
+492ffa:       e9 fd 00 00 00          jmp    4930fc &lt;main.main+0x28c&gt;
+492fff:       48 8d 5c 24 42          lea    0x42(%rsp),%rbx</code></pre>
+    
+    <p>Let's analyze the instruction sequence from <code>0x492fa7</code> to <code>0x492fff</code>:</p>
+    <ul class="liste-normale">
+      <li>At instruction <code>0x492fbc</code>, movzbl loads a byte from <code>rbx</code> into <code>%r10d</code>.</li>
+      <li>From instruction <code>0x492fd2</code> to <code>0x492fda</code>, the code divides <code>%rax</code> by <code>%rdi</code> and retrieves the remainder in <code>%rdx</code>. This looks like a modulo calculation.</li>
+      <li>At instruction <code>0x492ff2</code>, a XOR is performed between two bytes.</li>
+      <li>At instruction <code>0x492fa7</code>, the byte is stored in memory.</li>
+      <li>Finally, at instructions <code>0x492ff5</code> and <code>0x492ff8</code>, we check if there are remaining bytes to process. Otherwise, we return to <code>0x492fa7</code>.</li>
+    </ul>
+    
+    <p>We notice that this loop corresponds to a XOR between a key and the string provided by the user. Let's analyze the contents of the registers before the start of the loop.</p>
+
+    <h2>Register Contents Analysis</h2>
+    <pre><code>[----------------------------------registers-----------------------------------]
+RAX: 0xa ('\n')
+RBX: 0xc42007e040 ("helloworld")
+RCX: 0xa ('\n')
+RDX: 0xc42007e050 --&gt; 0x0
+RSI: 0xa ('\n')
+RDI: 0x6
+RBP: 0xc420037f70 --&gt; 0xc420037f78 --&gt; 0x428ba6 (&lt;runtime.main+550&gt;)
+RSP: 0xc420037ec0 --&gt; 0x4a46c0 --&gt; 0x1
+RIP: 0x492fa2 (&lt;main.main+306&gt;: xor    r9d,r9d)
+R8 : 0xc420037f10 --&gt; 0x656d746f6f72 ('rootme')
+R9 : 0x12
+R10: 0x52ea80 --&gt; 0x20001000080000
+R11: 0x246
+R12: 0x0
+R13: 0xf3
+R14: 0x33 ('3')
+R15: 0x28 ('(')
+EFLAGS: 0x206 (carry PARITY adjust zero sign trap INTERRUPT direction overflow)</code></pre>
+    
+    <p>The register <code>rbx</code> contains our character string and <code>r8</code> contains the string "rootme", which probably corresponds to the encryption key (it is used at instruction <code>0x492fed</code>). Then, the instruction <code>lea 0x42(%rsp), %rbx</code> loads the effective address and calculates <code>rsp+0x42</code> then stores the result in <code>rbx</code>.</p>
+
+    <h2>Comparison Operation</h2>
+    <pre><code>492fff:       48 8d 5c 24 42          lea    0x42(%rsp),%rbx
+493004:       48 89 1c 24             mov    %rbx,(%rsp)
+493008:       48 c7 44 24 08 0e 00    movq   $0xe,0x8(%rsp)
+49300f:       00 00
+493011:       48 c7 44 24 10 0e 00    movq   $0xe,0x10(%rsp)
+493018:       00 00
+49301a:       48 89 54 24 18          mov    %rdx,0x18(%rsp)
+49301f:       48 89 4c 24 20          mov    %rcx,0x20(%rsp)
+493024:       48 89 44 24 28          mov    %rax,0x28(%rsp)
+493029:       e8 a2 e0 fb ff          call   4510d0 &lt;bytes.Compare&gt;</code></pre>
+    
+    <pre><code>[----------------------------------registers-----------------------------------]
+RAX: 0xa ('\n')
+RBX: 0xc420037f02 --&gt; 0x81c0c1b1b23023b
+RCX: 0xa ('\n')
+RDX: 0xc42007e050 --&gt; 0x1d1d120218030a1a
+RSI: 0xa ('\n')
+RDI: 0x6
+RBP: 0xc420037f70 --&gt; 0xc420037f78 --&gt; 0x428ba6
+RSP: 0xc420037ec0 --&gt; 0xc420037f02 --&gt; 0x81c0c1b1b23023b
+RIP: 0x493029 (&lt;main.main+441&gt;: call   0x4510d0 &lt;bytes.Compare&gt;)
+R8 : 0xc420037f10 --&gt; 0x656d746f6f72 ('rootme')
+R9 : 0xa ('\n')
+R10: 0x10
+R11: 0xa ('\n')
+R12: 0xc42007e050 --&gt; 0x1d1d120218030a1a
+R13: 0xf3
+R14: 0x33 ('3')
+R15: 0x28 ('(')
+
+gdb-peda$ x/50b $rsp+0x42
+0xc420037f02:   0x3b    0x02    0x23    0x1b    0x1b    0x0c    0x1c    0x08
+0xc420037f0a:   0x28    0x1b    0x21    0x04    0x1c    0x0b    0x72    0x6f
+0xc420037f12:   0x6f    0x74    0x6d    0x65    0x00    0x00    0x00    0x00
+0xc420037f1a:   0x00    0x00    0x00    0x00    0x00    0x00    0x00    0x00
+0xc420037f22:   0x00    0x00    0x00    0x00    0x00    0x00    0x00    0x00
+0xc420037f2a:   0x00    0x00    0x00    0x00    0x00    0x00    0x10    0x7f
+0xc420037f32:   0x03    0x20</code></pre>
+    
+    <p>Following these instructions, a call to <code>&lt;bytes.Compare&gt;</code> is made to compare two bit strings, corresponding respectively to the string given by the user and the one representing the password. Additionally, the content of <code>rbx</code> is modified (consequence of the XOR operations). By consulting the stack content (<code>rsp</code>), we notice the previously precalculated values.</p>
+    
+    <p>So the result that the program expects is the character string corresponding to the encryption of the bits from <code>rsp</code>. To find the password, we must perform the reverse operation on the bits of <code>rsp</code> and the key.</p>
+
+    <h2>Solution Script</h2>
+    <p>We create a Python script that performs a XOR operation between an element of <code>rsp</code> and the key. The key must have a size equivalent to or greater than the number of bits in <code>rsp</code> (knowing that we only take the first 20 bits of <code>rsp</code> because after the first 20 bits the other bits are 0, we multiply the key by 4). We transform the characters by their corresponding ASCII codes. Then we perform a XOR between an element of the sequence and the key. This leads us to the following code:</p>
+    
+    <pre><code>passwd = [0x3b, 0x02, 0x23, 0x1b, 0x1b, 0x0c, 0x1c, 0x08, 0x28, 0x1b, 0x21, 0x04, 0x1c, 0x0b, 0x72, 0x6f, 0x6f, 0x74, 0x6d, 0x65]
+key_char = "rootme" * 4
+key = []
+for i in range(0, len(key_char)):
+  key.append(ord(key_char[i]))
+
+for i in range(0, len(passwd)):
+  print(chr(passwd[i] ^ key[i]), end="")
+print()</code></pre>
+    
+    <pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf x64 - Golang basique$ python3 solution.py
+&lt;censored&gt;</code></pre>
+
+    <h2>Conclusion</h2>
+    <p>By reverse-engineering the binary and analyzing the XOR encryption loop, we successfully identified the encryption key ("rootme") and the expected encrypted output. Using a simple Python script to XOR the encrypted bytes with the key, we recovered the original password that the program expects as input.</p>
+  </article>
+</body>
+</html>      
