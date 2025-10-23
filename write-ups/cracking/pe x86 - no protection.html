@@ -15,6 +15,15 @@
       <h1>Root-Me: PE x86 — No Protection</h1>
       <p class="meta">Category: Binary/Reverse Engineering • Difficulty: Easy • Date: 2025-10-23</p>
     </div>
+        <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
   </header>
 
   <main>
@@ -29,7 +38,7 @@ ch15.exe: PE32 executable (console) Intel 80386 (stripped to external PDB), for 
 </code></pre>
 
         <p>Notes from the output:</p>
-        <ul>
+        <ul class="liste-normale">
           <li>PE32 (Windows 32-bit) console application for Intel 80386.</li>
           <li>The executable is stripped, but an external PDB (Program Database) is present — so debug symbols are available separately.</li>
           <li>No obfuscation is suggested by the metadata.</li>

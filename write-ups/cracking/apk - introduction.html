@@ -5,13 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>APK - Introduction</title>
     <link rel="stylesheet" href="../../style.css">
+    <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
   </head>
   <body>
     <div class="conteneur">
       <h1>APK - Introduction</h1>
 
       <p>The obfuscation methods in this challenge are:</p>
-      <ul>
+      <ul class="liste-normale">
         <li>The provided file is an <code>.apk</code>, which makes analyzing the code more difficult. 
         However, it is possible to use a decompiler as we will do later.</li>
         <li>The source code uses generic variable names and multiple operations, complicating analysis and understanding.</li>

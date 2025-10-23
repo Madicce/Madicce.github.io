@@ -14,6 +14,15 @@
     <h1>Root-Me: ELF x86 — No Protection</h1>
     <p class="meta">Category: Binary Exploitation • Difficulty: Easy • Date: 2025-10-23</p>
     <link rel="stylesheet" href="../../style.css">
+        <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
   </header>
 
   <article>
@@ -82,7 +91,7 @@ undefined4 FUN_004007c0(void)
 </code></pre>
 
 <p>Notes:</p>
-<ul>
+<ul class="liste-normale">
   <li>The <code>your_passwd</code> array has size 4 but <code>fgets</code> reads up to 64 characters → buffer overflow possible.</li>
   <li>The stack layout shows how each character of <code>your_passwd</code> maps to local variables.</li>
   <li>The expected password length is 19 (0x13).</li>

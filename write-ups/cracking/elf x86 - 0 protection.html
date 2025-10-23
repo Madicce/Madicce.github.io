@@ -14,6 +14,15 @@
     <h1>Root-Me: ELF x86 — No Protection</h1>
     <p class="meta">Category: Binary Exploitation • Difficulty: Easy • Date: 2025-10-23</p>
     <link rel="stylesheet" href="../../style.css">
+        <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
   </header>
 
   <article>
@@ -27,7 +36,7 @@ ch1.bin: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically l
 </code></pre>
 
     <p>Notes from the output:</p>
-    <ul>
+    <ul class="liste-normale">
       <li>ELF 32-bit LSB for Intel 80386.</li>
       <li>Binary is <strong>dynamically linked</strong> and the interpreter is <code>/lib/ld-linux.so.2</code>.</li>
       <li>The binary is <strong>not stripped</strong>, so symbol and debug information are available.</li>
