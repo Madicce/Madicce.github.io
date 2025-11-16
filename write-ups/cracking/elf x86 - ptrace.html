@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ELF x86 - Ptrace</title>
+    <link rel="stylesheet" href="../../style.css">
+    <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>ELF x86 - Ptrace</h2>
+
+<p>Let’s analyze the file using the <code>file</code> command.</p>
+
+<pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf x86 - ptrace$ file ch3.bin
+ch3.bin: ELF 32-bit LSB executable, Intel 80386, version 1 (GNU/Linux), statically linked, for GNU/Linux 2.6.9, not stripped
+</code></pre>
+
+<p>
+The <code>ch3.bin</code> file is a 32-bit ELF executable for the Intel x86 architecture,
+compiled for a relatively old GNU/Linux version (2.6.9).  
+It is statically linked, meaning all required libraries are embedded in the binary itself.  
+Additionally, it is not stripped, which makes the analysis easier since debugging symbols are present.
+</p>
+
+<p>
+The main obfuscation method used here is a call to the <code>ptrace</code> function.
+More precisely, the binary implements an anti-debugging mechanism that we must bypass.
+Let’s first inspect the symbol table of the executable:
+</p>
+
+<pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf x86 - ptrace$ objdump -t ch3.bin
+
+ch3.bin:     file format elf32-i386
+
+SYMBOL TABLE:
+08048114 l    d  .note.ABI-tag  00000000 .note.ABI-tag
+08048134 l    d  .rel.plt       00000000 .rel.plt
+080481bc l    d  .init  00000000 .init
+080481e0 l    d  .plt   00000000 .plt
+080482f0 l    d  .text  00000000 .text
+080c1ce0 l    d  __libc_freeres_fn      00000000 __libc_freeres_fn
+080c27e0 l    d  __libc_thread_freeres_fn       00000000 __libc_thread_freeres_fn
+080c2854 l    d  .fini  00000000 .fini
+080c2880 l    d  .rodata        00000000 .rodata
+080db8f4 l    d  __libc_atexit  00000000 __libc_atexit
+080db8f8 l    d  __libc_subfreeres      00000000 __libc_subfreeres
+080db924 l    d  __libc_thread_subfreeres       00000000 __libc_thread_subfreeres
+080db928 l    d  .eh_frame      00000000 .eh_frame
+080e392c l    d  .gcc_except_table      00000000 .gcc_except_table
+080e4f90 l    d  .tdata 00000000 .tdata
+080e4fa0 l    d  .tbss  00000000 .tbss
+080e4fa0 l    d  .init_array    00000000 .init_array
+080e4fa4 l    d  .fini_array    00000000 .fini_array
+080e4fa8 l    d  .ctors 00000000 .ctors
+080e4fb0 l    d  .dtors 00000000 .dtors
+080e4fb8 l    d  .jcr   00000000 .jcr
+080e4fbc l    d  .data.rel.ro   00000000 .data.rel.ro
+080e4fec l    d  .got   00000000 .got
+080e4ff4 l    d  .got.plt       00000000 .got.plt
+080e5060 l    d  .data  00000000 .data
+080e5c60 l    d  .bss   00000000 .bss
+080e7374 l    d  __libc_freeres_ptrs    00000000 __libc_freeres_ptrs
+00000000 l    d  .comment       00000000 .comment
+00000000 l    df *ABS*  00000000 ch3.c
+</code></pre>
+
+<p>
+We can see the file <code>ch3.c</code>, meaning this binary was written in C.
+Let’s now examine the beginning of the assembly code of <code>main</code>:
+</p>
+
+<pre><code>080483f0 <main>:
+80483f0:	8d 4c 24 04          	lea    0x4(%esp),%ecx
+80483f4:	83 e4 f0             	and    $0xfffffff0,%esp
+80483f7:	ff 71 fc             	push   -0x4(%ecx)
+80483fa:	55                   	push   %ebp
+80483fb:	89 e5                	mov    %esp,%ebp
+80483fd:	51                   	push   %ecx
+80483fe:	83 ec 14             	sub    $0x14,%esp
+8048401:	c7 45 f4 88 28 0c 08 	movl   $0x80c2888,-0xc(%ebp)
+8048408:	6a 00                	push   $0x0
+804840a:	6a 01                	push   $0x1
+804840c:	6a 00                	push   $0x0
+804840e:	6a 00                	push   $0x0
+8048410:	e8 5b 06 01 00       	call   8058a70 <ptrace>
+8048415:	83 c4 10             	add    $0x10,%esp
+8048418:	85 c0                	test   %eax,%eax
+804841a:	79 1a                	jns    8048436 <main+0x46>
+804841c:	83 ec 0c             	sub    $0xc,%esp
+804841f:	68 94 28 0c 08       	push   $0x80c2894
+8048424:	e8 a7 0e 00 00       	call   80492d0 <_IO_puts>
+8048429:	83 c4 10             	add    $0x10,%esp
+804842c:	b8 01 00 00 00       	mov    $0x1,%eax
+8048431:	e9 c3 00 00 00       	jmp    80484f9 <_notng+0x62>
+8048436:	83 ec 0c             	sub    $0xc,%esp
+8048439:	68 b0 28 0c 08       	push   $0x80c28b0
+804843e:	e8 8d 0e 00 00       	call   80492d0 <_IO_puts>
+8048443:	83 c4 10             	add    $0x10,%esp
+8048446:	83 ec 0c             	sub    $0xc,%esp
+8048449:	68 f0 28 0c 08       	push   $0x80c28f0
+804844e:	e8 7d 0e 00 00       	call   80492d0 <_IO_puts>
+8048453:	83 c4 10             	add    $0x10,%esp
+8048456:	83 ec 0c             	sub    $0xc,%esp
+8048459:	68 30 29 0c 08       	push   $0x80c2930
+804845e:	e8 6d 0e 00 00       	call   80492d0 <_IO_puts>
+8048463:	83 c4 10             	add    $0x10,%esp
+8048466:	b8 6e 29 0c 08       	mov    $0x80c296e,%eax
+804846b:	83 ec 0c             	sub    $0xc,%esp
+804846e:	50                   	push   %eax
+</code></pre>
+
+<p>
+The function starts with a call to <code>ptrace</code>, which is typically used to detect debugging.
+To bypass this anti-debugging check, we can simply modify the <code>eax</code> register and set it to zero.
+</p>
+
+<pre><code>[----------------------------------registers-----------------------------------]
+EAX: 0xffffffff
+EBX: 0x0
+ECX: 0x0
+EDX: 0xffffffe8
+ESI: 0x8048bc0 (<__libc_csu_fini>:      push   ebp)
+EDI: 0x8048b20 (<__libc_csu_init>:      push   ebp)
+EBP: 0xffffd128 --> 0xffffd198 --> 0x0
+ESP: 0xffffd110 --> 0x1
+EIP: 0x8048418 (<main+40>:      test   eax,eax)
+EFLAGS: 0x282 (...)
+...
+gdb-peda$ set $eax=0
+gdb-peda$ p $eax
+$1 = 0x0
+</code></pre>
+
+<p>
+After bypassing this check, four <code>printf</code> calls are executed to print the welcome banner,
+followed by a call to <code>fgets</code> to read the user input.  
+The use of <code>fgets</code> suggests the input string has a fixed size limit.
+</p>
+
+<p>
+At the end of <code>main</code>, the program calls a function located at <code>0x8048497</code>, stored in <code>eax</code>,
+which corresponds to the function <code>_notng</code>.
+Inside this function, four comparisons are performed between registers <code>al</code> and <code>dl</code>.
+</p>
+
+<p>
+By running the binary in GDB, we observe that <code>al</code> contains the correct password characters,
+while <code>dl</code> contains the user-provided input.  
+The characters in <code>al</code> are: <code>0x65</code>, <code>0x61</code>, <code>0x73</code>, <code>0x79</code>
+(i.e., <code>e</code>, <code>a</code>, <code>s</code>, <code>y</code>).  
+These bytes are taken from the string <code>"ksuiealoghy"</code>.  
+Testing the new password:
+</p>
+
+<pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking/elf x86 - ptrace$ ./ch3.bin
+############################################################
+##        Bienvennue dans ce challenge de cracking        ##
+############################################################
+
+Password : <censored>
+
+Good password !!!
+</code></pre>
+
+  </body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Godot - Bytecode</title>
+    <link rel="stylesheet" href="../../style.css">
+    <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Godot - Bytecode</h2>
+
+<p>Let’s analyze the file using the <code>file</code> command.</p>
+
+<pre><code>yoyo@LAPTOP:~/M1/S2/SL/rootme/craking$ file bytecode.exe
+bytecode.exe: PE32+ executable (GUI) x86-64 (stripped to external PDB), for MS Windows
+</code></pre>
+
+<p>
+  This output tells us that the file is in <strong>PE32+</strong> format, meaning it is a 64-bit executable
+  for modern Windows systems using the x86-64 architecture.  
+  The <em>GUI</em> indication means the program has a graphical interface rather than a console one.  
+</p>
+
+<p>
+  The binary is <strong>stripped</strong>, meaning internal debugging symbols have been removed,
+  making static analysis more difficult.  
+  However, the message indicates that the symbols were exported into an external <strong>PDB</strong>
+  (Program Database) file.
+</p>
+
+<p>
+  This challenge involves <strong>Godot bytecode</strong>, which is the main obfuscation technique used here.
+  Fortunately, the open-source tool <code>gdsdecomp</code><sup>[1]</sup> exists.
+</p>
+
+<p>
+  This software can load resources from APK, PCK, or embedded EXE files,
+  and automatically convert binary resources back into their original text formats.
+</p>
+
+<p><img src="52.png" alt="Contents of FlagLabel.gdc"></p>
+
+<p>
+  The logic is the same as in the previous challenge.  
+  The file <code>FlagLabel.gdc</code> was originally written in GDScript.
+</p>
+
+<p>
+  The mechanism is simple: the script performs a decryption operation based on XOR-like arithmetic
+  between the values in the lists <code>key</code> and <code>enc</code>.  
+  This decrypted string is never displayed in the game.  
+  We rewrite the logic in Python and execute it to obtain the flag.
+</p>
+
+<pre><code class="language-python">key = [66, 121, 84, 51, 99, 48, 100, 51]
+enc = [153, 222, 192, 159, 131, 148, 211, 161, 167, 165, 116, 167, 203, 149, 132, 153, 174, 218, 187, 83, 204, 163, 110, 117, 187, 237, 135, 150, 147, 148, 151, 118, 118, 231, 168, 133, 150, 163, 149, 166, 150]
+
+hidden_content = ""
+for i in range(len(enc)):
+    hidden_content += chr(enc[i] - key[i % len(key)])
+
+text = "nothing to see\nhere!"
+print(hidden_content)
+</code></pre>
+
+<pre><code>yoyo@LAPTOP-9SQVR51F:~/M1/S2/SL/rootme/craking/bytecode_exe$ python3 read.py
+Well done, the flag is
+&lt;censored&gt;
+</code></pre>
+
+  </body>
+</html>

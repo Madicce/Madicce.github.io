@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WASM - Introduction</title>
+    <link rel="stylesheet" href="../../style.css">
+    <style>
+      ul.liste-normale {
+          all: revert !important;
+      }
+
+      ul.liste-normale li {
+          all: revert !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>WASM - Introduction</h2>
+
+<p>
+  In this challenge, no obfuscation method is used. When starting the challenge, we arrive on a web page
+  that asks for a password in order to obtain the flag. WebAssembly is an assembly-like language for the web.
+  We therefore know that there is a <code>.wasm</code> program embedded in the site’s stack, which we need to
+  retrieve in order to get the correct password. Let’s inspect the <code>index.js</code> file.
+</p>
+
+<pre><code class="language-js">
+function get_password(){
+  var jsString = document.querySelector("#password").value;
+  var lengthBytes = lengthBytesUTF8(jsString)+1;
+  var stringOnWasmHeap = _malloc(lengthBytes);
+  stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
+  return stringOnWasmHeap;
+}
+function send_message(flag){
+  document.querySelector("#flag").innerText = UTF8ToString(flag);
+}
+</code></pre>
+
+<p>
+  Two functions are declared: <code>get_password</code> and <code>send_message</code>. The first function retrieves
+  the password, and <code>send_message</code> sends a message containing the flag depending on the password given.
+  Let’s set a breakpoint on <code>get_password</code> to retrieve the <code>.wasm</code> file executed by a function.
+</p>
+
+<p><img src="../images/53.png" alt="Execution stack content"></p>
+
+<p>
+  The file is therefore located at the URL:
+  <a href="http://challenge01.root-me.org/cracking/ch41/index.wasm">http://challenge01.root-me.org/cracking/ch41/index.wasm</a>.
+</p>
+
+<p>We use the command <code>strings index.wasm</code>:</p>
+
+<pre><code class="language-bash">
+md5.h
+md5.c
+/home/user/firefox
+main.c
+md5.h
+</code></pre>
+
+<p>
+  We notice the presence of <code>md5.h</code> and <code>md5.c</code>. MD5 is a cryptographic hash function that
+  computes the digital fingerprint of a message. Further down, we notice a long string which is probably the
+  result of hashing some input string:
+</p>
+
+<pre><code class="language-bash">
+!"#
+!"#
+936fff76f378ace4cf83a4360cafcc20
+5 1,(
+name
+get_password
+send_message
+)emscripten_set_keydown_callback_on_thread
+</code></pre>
+
+<p>
+  We decrypt this string using the website <a href="https://md5decrypt.net">md5decrypt</a>.
+</p>
+
+<p><img src="../images/54.png" alt=""></p>
+
+<p>
+  We obtain &lt;censored&gt;. We test this password on the webpage:
+</p>
+
+<p><img src="../images/55.png" alt="Result"></p>
+
+  </body>
+</html>
